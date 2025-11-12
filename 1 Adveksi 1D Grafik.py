@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 nx = 200          # jumlah grid
 Lx = 10.0         # panjang domain (m)
 dx = Lx / nx
-v = 1.0           # kecepatan adveksi (m/s)
+v = 0.5           # kecepatan adveksi (m/s)
 
 CFL = 0.8         # Courant number (<=1 agar stabil)
 dt = CFL * dx / abs(v)
