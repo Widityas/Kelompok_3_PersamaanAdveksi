@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 # Parameter
-nx = 200          # jumlah grid
-Lx = 10.0         # panjang domain (m)
-dx = Lx / nx
+nx = 200                # jumlah grid
+Lx = 10.0               # panjang domain (m)
+dx = Lx / (nx - 1)
 v = 0.5           # kecepatan adveksi (m/s)
 
 CFL = 0.8         # Courant number (<=1 agar stabil)
