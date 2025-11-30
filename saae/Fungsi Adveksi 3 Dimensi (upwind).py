@@ -1,15 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d import Axes3D
-
-# ===============================
 # PARAMETER DOMAIN
-# ===============================
-Lx = 2.0
-Ly = 2.0
-nx = 80
-ny = 80
+Lx = 2.0; Ly = 2.0
+nx = 80 ;ny = 80
 
 dx = Lx / (nx - 1)
 dy = Ly / (ny - 1)
@@ -21,15 +15,10 @@ dt = 0.01      # langkah waktu diperbesar
 x = np.linspace(0, Lx, nx)
 y = np.linspace(0, Ly, ny)
 X, Y = np.meshgrid(x, y)
-
-# ===============================
 # KONDISI AWAL
-# ===============================
 U = np.exp(-50 * ((X - 0.6)**2 + (Y - 0.6)**2))
 
-# ===============================
 # ADVESI UPWIND
-# ===============================
 def adveksi_2d_upwind(U, vx, vy, dt, dx, dy):
     Un = U.copy()
     Unew = np.zeros_like(U)
@@ -45,24 +34,20 @@ def adveksi_2d_upwind(U, vx, vy, dt, dx, dy):
                           - vy * dt/dy * (Un[j, i] - Un[jm, i]))
     return Unew
 
-# ===============================
 # SETUP PLOT
-# ===============================
 fig = plt.figure(figsize=(10, 7))
 ax = fig.add_subplot(111, projection='3d')
 
 surf = ax.plot_surface(X, Y, U, cmap='viridis')
 ax.set_zlim(0, 1)
-ax.set_title("Adveksi 2D - Gaussian Bergerak (3D Surface)")
+ax.set_title("Adveksi 2D dengan Amplitudo" )
 ax.set_xlabel("x")
 ax.set_ylabel("y")
 ax.set_zlabel("Konsentrasi")
 
 time_text = ax.text2D(0.05, 0.95, "", transform=ax.transAxes)
 
-# ===============================
 # ANIMASI
-# ===============================
 def update(frame):
     global U, surf
 
@@ -76,5 +61,6 @@ def update(frame):
     time_text.set_text(f"Time = {frame * dt:.3f} s")
     return surf, time_text
 
-ani = FuncAnimation(fig, update, frames=300, interval=30, blit=False)
+ani = FuncAnimation(fig, update, frames=100, interval=30, blit=False)
+ani.save("Adveksi3D.gif", writer="pillow", fps=20) 
 plt.show()

@@ -25,9 +25,7 @@ u_merge = None
 merge_start_frame = None
 merge_duration = 40   # semakin besar → transisi makin smooth
 
-# ===============================
-# FUNGSI ADVESI UPWIND
-# ===============================
+# FUNGSI ADVEKSI UPWIND
 def upwind(u, v, dt, dx):
     un = u.copy()
     unew = np.zeros_like(u)
@@ -99,4 +97,12 @@ def update(frame):
 # ANIMASI
 # ===============================
 ani = FuncAnimation(fig, update, frames=500, interval=20, blit=False)
+
+# Simpan sebagai MP4
+print("Sedang merender video (ini mungkin butuh waktu agak lama)...")
+
+# dpi=150 agar resolusi lebih tajam
+ani.save('hasil_adveksi_surface.mp4', writer='ffmpeg', fps=20, dpi=150) 
+
+print("Selesai! Cek folder project kamu untuk melihat videonya.")
 plt.show()

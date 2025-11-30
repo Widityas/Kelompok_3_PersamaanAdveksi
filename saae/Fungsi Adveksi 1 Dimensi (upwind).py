@@ -1,14 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from pyparsing import C
 
 L =2.0                   # panjang domain (m)
 nx = 200                 # jumlah grid
-dx = L / (nx-1)  # jarak antar grid
+dx = L / (nx-1)          # jarak antar grid
 
-v = 0.1           # kecepatan adveksi (m/s)
-dt = 0.01                #langkah waktu (s)
+v = 0.1                  # kecepatan adveksi (m/s)
+dt = 0.01                # langkah waktu (s)
 CFL = v * dt / dx        # Courant number
 
 print("CFL =", CFL)
@@ -16,9 +15,7 @@ if CFL > 1:
     print("WARNING: CFL > 1 --> solusi akan instabil")
 
 x = np.linspace(0, L, nx)
-
 u = np.exp(-100* (x - 0.3)**2)  # kondisi awal: Gaussian
-
 
 def adveksi_1d_upwind(u, v, dt, dx):
     un = u.copy()
@@ -47,5 +44,9 @@ def update(frame):                                          # fungsi update untu
 
 ani = FuncAnimation(fig, update, frames=200, blit=True, interval=30) # buat animasi
 
-
-plt.show()  
+# Simpan sebagai MP4
+# ===============================
+# ANIMASI & SAVE VIDEO
+# ===============================
+ani.save('hasil_adveksi_surface.mp4', writer='ffmpeg', fps=20, dpi=150) 
+plt.show()
