@@ -2,81 +2,101 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-# ================== Parameter Domain ==================
-nx, ny = 150, 150
-Lx, Ly = 10.0, 10.0
-dx, dy = Lx/nx, Ly/ny
+# ===============================
+# PARAMETER & DOMAIN
+# ===============================
+L = 4.0
+nx = 400
+dx = L / (nx - 1)
+x = np.linspace(0, L, nx)
 
-# kecepatan masing-masing pulse — SEARAH
-u1, v1 = 0.5, 0.0   # pulse depan (lebih lambat)
-u2, v2 = 1.2, 0.0   # pulse belakang (lebih cepat)
+dt = 0.005
+v1 = 0.2   # pulse cepat (belakang)
+v2 = 0.7   # pulse lambat (depan)
 
-CFL = 0.4
-dt = CFL * min(dx/abs(u1), dx/abs(u2))
-nt = 200
+# ===============================
+# KONDISI AWAL
+# ===============================
+u1 = np.exp(-200 * (x - 1.2)**2)
+u2 = np.exp(-200 * (x - 0.4)**2)
 
-# koefisien restitusi (tabrakan)
-e = 0.0   # 0 = menyatu total, 1 = elastis
+merged = False
+u_merge = None
+merge_start_frame = None
+merge_duration = 40   # semakin besar → transisi makin smooth
 
+# ===============================
+# FUNGSI ADVESI UPWIND
+# ===============================
+def upwind(u, v, dt, dx):
+    un = u.copy()
+    unew = np.zeros_like(u)
+    for i in range(1, len(u)):
+        unew[i] = un[i] - v * dt/dx * (un[i] - un[i-1])
+    return unew
 
-# ================== Grid ==================
-x = np.linspace(0, Lx, nx)
-y = np.linspace(0, Ly, ny)
-X, Y = np.meshgrid(x, y)
+# ===============================
+# SETUP PLOT
+# ===============================
+fig, ax = plt.subplots()
+line, = ax.plot(x, u1 + u2, color='magenta', lw=2)
+ax.set_ylim(-0.1, 2.5)
+ax.set_xlim(0, L)
+ax.set_xlabel("Posisi")
+ax.set_ylabel("Amplitudo")
+ax.set_title("Adveksi 1D - Pulsa Menyatu Permanen (Smooth & Stable)")
 
-# ================== Dua Pulsa Gaussian ==================
-# satu di depan, satu di belakang
-C1 = np.exp(-((X - 3.0)**2 + (Y - 5.0)**2)/0.6)
-C2 = np.exp(-((X - 1.5)**2 + (Y - 5.0)**2)/0.6)
+time_text = ax.text(0.02, 0.92, "", transform=ax.transAxes)
 
+# ===============================
+# UPDATE ANIMASI
+# ===============================
+def update(frame):
+    global u1, u2, merged, u_merge, merge_start_frame
 
-# ================== Skema Upwind 2D ==================
-def upwind_2d(C, u, v, dt, dx, dy):
-    Cn = C.copy()
-    Cnew = np.zeros_like(C)
-    
-    for i in range(nx):
-        for j in range(ny):
+    if not merged:
+        u1 = upwind(u1, v1, dt, dx)
+        u2 = upwind(u2, v2, dt, dx)
 
-            im = (i - 1) % nx
-            jm = (j - 1) % ny
-            ip = (i + 1) % nx
-            jp = (j + 1) % ny
+        # cek overlap (dua pulse mulai nabrak)
+        overlap = np.any((u1 > 0.05) & (u2 > 0.05))
 
-            dudx = (Cn[j, i] - Cn[j, im]) if u > 0 else (Cn[j, ip] - Cn[j, i])
-            dvdy = (Cn[j, i] - Cn[jm, i]) if v > 0 else (Cn[jp, i] - Cn[j, i])
+        # kalau baru mulai overlap → mulai merging
+        if overlap and merge_start_frame is None:
+            merge_start_frame = frame
 
-            Cnew[j, i] = Cn[j, i] - u*dt/dx*dudx - v*dt/dy*dvdy
+            # posisi tengah dua peak
+            x_center = 0.5 * (x[np.argmax(u1)] + x[np.argmax(u2)])
 
-    return Cnew
+            # amplitude gabungan (lebih tinggi)
+            amp = np.max(u1) + np.max(u2)
 
+            # pulse baru
+            u_merge = amp * np.exp(-200 * (x - x_center)**2)
 
-# ================== Setup Plot ==================
-fig, ax = plt.subplots(figsize=(6, 5))
-im = ax.imshow(C1 + C2, origin='lower', extent=[0, Lx, 0, Ly],
-               cmap='viridis', vmin=0, vmax=1.5)
-cbar = plt.colorbar(im, ax=ax)
-cbar.set_label('Konsentrasi')
+    # fase transisi menuju pulse baru
+    if merge_start_frame is not None and frame < merge_start_frame + merge_duration:
+        alpha = (frame - merge_start_frame) / merge_duration
+        u_mix = (1 - alpha) * (u1 + u2) + alpha * u_merge
 
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-title = ax.set_title(f"Adveksi 2D - Dua Pulsa Searah Saling Menyusul (e = {e})\nWaktu 0.00 s")
+    elif merge_start_frame is not None and not merged:
+        # setelah transisi selesai → gunakan pulse baru
+        merged = True
+        u_mix = u_merge
+    else:
+        u_mix = u1 + u2
 
-# ================== Animasi ==================
-def animate(n):
-    global C1, C2
+    # kalau sudah merged → pulse baru ikut bergerak
+    if merged:
+        u_merge[:] = upwind(u_merge, (v1 + v2) / 2, dt, dx)
+        u_mix = u_merge
 
-    # kedua pulsa bergerak ke arah yang sama → upwind searah
-    C1 = upwind_2d(C1, u1, v1, dt, dx, dy)
-    C2 = upwind_2d(C2, u2, v2, dt, dx, dy)
+    line.set_ydata(u_mix)
+    time_text.set_text(f"t = {frame*dt:.2f} s")
+    return line, time_text
 
-    # model tabrakan (mix)
-    Cmix = e*C1 + e*C2 + (1 - e)*0.5*(C1 + C2)
-
-    im.set_data(Cmix)
-    title.set_text(f"Adveksi 2D - Dua Pulsa Searah Saling Menyusul (e = {e})\nWaktu {n*dt:.2f} s")
-
-    return [im]
-
-ani = FuncAnimation(fig, animate, frames=nt, interval=50, blit=True)
+# ===============================
+# ANIMASI
+# ===============================
+ani = FuncAnimation(fig, update, frames=500, interval=20, blit=False)
 plt.show()

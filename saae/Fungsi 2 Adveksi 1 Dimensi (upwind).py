@@ -3,28 +3,33 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 # ===============================
-# PARAMETER DOMAIN
+# PARAMETER & DOMAIN
 # ===============================
-L = 2.0
+L = 4.0
 nx = 400
 dx = L / (nx - 1)
 x = np.linspace(0, L, nx)
 
 dt = 0.005
-v1 = 0.7     # pulse belakang (lebih cepat)
-v2 = 0.1     # pulse depan (lebih lambat)
+v1 = 0.2               # kecepatan pulse 1 (lebih cepat)
+v2 = 0.7                    #  kecepatan pulse 2 (lebih lambat)
 
-# flag apakah sudah tabrakan
-collided = False
+# koefisien restitusi:
+# 1.0 = elastis (tidak bercampur)
+# 0.5 = inelastis sebagian
+# 0.0 = menyatu total
+e = 0
+
 
 # ===============================
 # KONDISI AWAL
 # ===============================
-u1 = np.exp(-200 * (x - 0.4)**2)   # pulse belakang
-u2 = np.exp(-200 * (x - 1.2)**2)   # pulse depan
+u1 = np.exp(-200 * (x - 1.2)**2)   # pulse depan
+u2 = np.exp(-200 * (x - 0.4)**2)   # pulse belakang
+
 
 # ===============================
-# SCHEME UPWIND
+# FUNGSI ADVESI UPWIND
 # ===============================
 def upwind(u, v, dt, dx):
     un = u.copy()
@@ -35,46 +40,38 @@ def upwind(u, v, dt, dx):
 
 
 # ===============================
-# FIGURE
+# SETUP FIGURE
 # ===============================
 fig, ax = plt.subplots()
 line, = ax.plot(x, u1 + u2, color='magenta')
 ax.set_ylim(-0.1, 1.2)
 ax.set_xlim(0, L)
-ax.set_title("Dua Pulse: Menyusul → Tabrak → Menyatu")
-time_text = ax.text(0.05, 0.92, "", transform=ax.transAxes)
+ax.set_xlabel("Posisi")
+ax.set_ylabel("Amplitudo")
+ax.set_title(f"Adveksi 1D - Dua Pulsa Saling Menyusul (e = {e})")
+
+time_text = ax.text(0.02, 0.92, "", transform=ax.transAxes)
+
+
+# ===============================
+# UPDATE FRAME ANIMASI
+# ===============================
+def update(frame):
+    global u1, u2
+
+    u1 = upwind(u1, v1, dt, dx)
+    u2 = upwind(u2, v2, dt, dx)
+
+    # model tabrakan / mixing
+    u_mix = e * u1 + e * u2 + (1 - e) * 0.5 * (u1 + u2)
+
+    line.set_ydata(u_mix)
+    time_text.set_text(f"t = {frame*dt:.2f} s")
+    return line, time_text
 
 
 # ===============================
 # ANIMASI
 # ===============================
-def update(frame):
-    global u1, u2, collided
-
-    if not collided:
-        # Update masing-masing pulse
-        u1 = upwind(u1, v1, dt, dx)
-        u2 = upwind(u2, v2, dt, dx)
-
-        # cek tabrakan: ketika superposisi mencapai nilai maks
-        if np.max(u1 + u2) > 0.95:
-            collided = True
-            # Buat pulse baru → campuran keduanya
-            u_combined = 0.5*(u1 + u2)
-            update.u = u_combined     # simpan dalam fungsi
-    else:
-        # setelah nabrak → pulse bergerak bersama
-        update.u = upwind(update.u, v1, dt, dx)
-
-    # Update visual
-    if collided:
-        line.set_ydata(update.u)
-    else:
-        line.set_ydata(u1 + u2)
-
-    time_text.set_text(f"t = {frame*dt:.3f} s")
-    return line, time_text
-
-
-ani = FuncAnimation(fig, update, frames=500, interval=30, blit=True)
+ani = FuncAnimation(fig, update, frames=400, interval=30, blit=True)
 plt.show()
